@@ -1,0 +1,4 @@
+interface:
+  display_name: "tweakin"
+  short_description: "Develop native iOS tweaks and build Instagram Focus"
+  default_prompt: "Use $tweakin to modify my locally acquired iOS app and verify the changes on my phone."
