@@ -2,7 +2,7 @@
 
 An agent skill for developing native iOS app tweaks, with source and local build tools for an Instagram Focus recipe.
 
-Ask your coding agent to change a specific behavior in an app you own. The skill guides binary inspection, hook development, signing, and phone testing. Its first recipe allows individual Reels while blocking the scrolling feed, removes the Reels tab, preserves search, and limits Home.
+Ask your coding agent to change a specific behavior in an app you own. The skill guides binary inspection, hook development, signing, and phone testing. Its first recipe allows individual Reels while blocking the scrolling feed, removes the Reels tab, preserves search, limits Home, and removes Home and Story ads.
 
 ## Install the skill
 

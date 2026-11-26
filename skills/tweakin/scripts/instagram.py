@@ -256,7 +256,8 @@ def inspect_ipa(ipa: Path) -> dict:
         clues = [
             "IGUnifiedVideoCollectionView", "IGSundialAutoScroll", "IGMainFeedListAdapterDataSource",
             "IGExploreGridViewController", "IGTabBarController", "objectsForListAdapter:",
-            "_tabBarSurfaces", "followedByCurrentUser",
+            "_tabBarSurfaces", "followedByCurrentUser", "IGStoryViewerDataStore", "replaceModelItems:maxCount:",
+            "IGThreadsInFeedModel", "IGVibesInFeedModel",
         ]
         data = main.read_bytes()
         return {

@@ -20,6 +20,10 @@ The inspection command's name clues are Instagram-specific. For another app, use
 
 Search for controller, scroll-view, feed-model, and data-source relationships relevant to the feature. Inspect the corresponding implementations and callers. When static evidence is insufficient, instrument a development-signed local build or use a debugger to observe calls and objects while exercising the feature. Keep observations free of message content, credentials, and account identifiers.
 
+`ipsw class-dump BINARY --class '^Name$' --re -V` from [ipsw](https://github.com/blacktop/ipsw) prints typed method signatures. Check embedded frameworks too; Instagram defines `IGMedia` and `IGAdItem` in `FBSharedFramework`. `NSClassFromString` accepts mangled Swift names such as `_TtC21IGThreadsInFeedModels20IGThreadsInFeedModel`.
+
+When filtering a data source, record class names in diagnostics. Instagram's diagnostics revealed that Home ads were `IGAdItem` objects, which static inspection had missed.
+
 Do not infer a method's semantics from its name alone. Establish which screens use it, which arguments it receives, what the return value represents, and whether another path restores the original behavior.
 
 ## Choose a narrow hook

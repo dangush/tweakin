@@ -140,6 +140,19 @@ static id IFTabButton(id self, SEL command, id surface) {
     return IFReelsSurface(surface) ? nil : button;
 }
 
+// Home ads are standalone IGAdItem objects; the IGMedia markers catch ad media such as Story ad reels.
+static BOOL IFIsAd(id object) {
+    if (IFIs(object, @"IGAdItem") || IFIs(object, @"_TtC19IGAdItemModelsSwift14IGAdItem_swift") || IFIs(object, @"IGLeadGenMultiSubmitAdItem")) return YES;
+    if (!IFIs(object, @"IGMedia")) return NO;
+    if (IFObject(object, @"injected") || IFObject(object, @"sponsoredPostInfo")) return YES;
+    BOOL known;
+    return IFBoolean(object, @"isSponsored", &known) || IFBoolean(object, @"isChildOfAdItem", &known);
+}
+
+static BOOL IFIsHomePromotion(id object) {
+    return IFIs(object, @"_TtC21IGThreadsInFeedModels20IGThreadsInFeedModel") || IFIs(object, @"IGHScrollThreadsProfileUpsellCardModel") || IFIs(object, @"_TtC19IGVibesInFeedModels18IGVibesInFeedModel");
+}
+
 static NSArray *(*IFOriginalHomeObjects)(id, SEL, id);
 static NSArray *IFHomeObjects(id self, SEL command, id adapter) {
     NSArray *original = IFOriginalHomeObjects(self, command, adapter);
@@ -150,13 +163,24 @@ static NSArray *IFHomeObjects(id self, SEL command, id adapter) {
         objc_setAssociatedObject(self, &IFHomeSeenKey, seen, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:original.count];
-    NSUInteger suggestions = 0, notFollowed = 0, visiblePosts = 0;
+    NSMutableDictionary *classes = [NSMutableDictionary dictionary];
+    NSUInteger suggestions = 0, notFollowed = 0, ads = 0, promotions = 0, visiblePosts = 0;
     BOOL caughtUp = NO, limitReached = NO;
     for (id object in original) {
+        NSString *className = NSStringFromClass([object class]) ?: @"?";
+        classes[className] = @([classes[className] unsignedIntegerValue] + 1);
         if (IFIs(object, @"IGEndOfFeedDemarcatorModel")) {
             [result addObject:object];
             caughtUp = YES;
             break;
+        }
+        if (IFIsAd(object)) {
+            ads++;
+            continue;
+        }
+        if (IFIsHomePromotion(object)) {
+            promotions++;
+            continue;
         }
         if (IFIs(object, @"IGFeedScrollableClipsModel") || IFIs(object, @"IGHScrollAYMFModel") || IFIs(object, @"IGInFeedStoriesTrayModel")) {
             suggestions++;
@@ -195,10 +219,55 @@ static NSArray *IFHomeObjects(id self, SEL command, id adapter) {
     IFRecord(@"homeVisiblePosts", @(visiblePosts));
     IFRecord(@"homeRemovedSuggestions", @(suggestions));
     IFRecord(@"homeRemovedUnfollowedAuthors", @(notFollowed));
+    IFRecord(@"homeRemovedAds", @(ads));
+    IFRecord(@"homeRemovedPromotions", @(promotions));
+    IFRecord(@"homeObjectClasses", classes);
     IFRecord(@"homeCaughtUp", @(caughtUp));
     IFRecord(@"homeLimitReached", @(limitReached));
     IFRecord(@"homeSessionPostLimit", @(IFHomePostLimit));
     return result;
+}
+
+// Filtering the data store's input keeps the viewer's navigation and list adapter consistent.
+static BOOL IFStoryIsAd(id viewModel) {
+    if (!IFIs(viewModel, @"IGStoryViewerViewModel")) return NO;
+    BOOL known;
+    if (IFBoolean(viewModel, @"isStoryMultiAuthorCarouselAd", &known) || IFBoolean(viewModel, @"isStoryMultiAdsGrid", &known)) return YES;
+    id items = IFObject(viewModel, @"items");
+    if (![items isKindOfClass:NSArray.class] || [items count] == 0) return NO;
+    for (id item in items) {
+        if (!IFIsAd(item)) return NO;
+    }
+    return YES;
+}
+
+static NSUInteger IFStoryAdsRemoved;
+static id IFFilterStoryModels(id items) {
+    if (![items isKindOfClass:NSArray.class]) return items;
+    NSMutableArray *filtered = [NSMutableArray arrayWithCapacity:[items count]];
+    for (id item in items) {
+        if (IFStoryIsAd(item)) IFStoryAdsRemoved++;
+        else [filtered addObject:item];
+    }
+    if (filtered.count == [items count]) return items;
+    if (filtered.count == 0) {
+        IFRecord(@"storyAllAdsKept", @YES);
+        return items;
+    }
+    IFRecord(@"storyRemovedAdReels", @(IFStoryAdsRemoved));
+    return [filtered copy];
+}
+
+static void (*IFOriginalStoryReplace)(id, SEL, id);
+static void IFStoryReplace(id self, SEL command, id items) {
+    IFRecord(@"storyViewerObserved", @YES);
+    IFOriginalStoryReplace(self, command, IFFilterStoryModels(items));
+}
+
+static void (*IFOriginalStoryReplaceMax)(id, SEL, id, long long);
+static void IFStoryReplaceMax(id self, SEL command, id items, long long maxCount) {
+    IFRecord(@"storyViewerObserved", @YES);
+    IFOriginalStoryReplaceMax(self, command, IFFilterStoryModels(items), maxCount);
 }
 
 static void (*IFOriginalExploreGridLoad)(id, SEL);
@@ -291,7 +360,7 @@ __attribute__((constructor)) static void InstagramFocusInstall(void) {
         };
         IFRecord(@"keychainRebindingResult", @(rebind_symbols(bindings, 4)));
         IFRecord(@"expectedInstagramVersion", @"418.2.0");
-        IFRecord(@"focusPatchVersion", @2);
+        IFRecord(@"focusPatchVersion", @3);
         IFRecord(@"actualInstagramVersion", [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown");
         IFHook(@"IGUnifiedVideoCollectionView", @"setScrollEnabled:", (IMP)IFReelSetScroll, (IMP *)&IFOriginalReelSetScroll, 'v', 3);
         IFHook(@"IGUnifiedVideoCollectionView", @"isScrollEnabled", (IMP)IFReelIsScrollEnabled, &IFOriginalReelIsScrollEnabled, 'B', 2);
@@ -304,5 +373,7 @@ __attribute__((constructor)) static void InstagramFocusInstall(void) {
         IFHook(@"IGMainFeedListAdapterDataSource", @"objectsForListAdapter:", (IMP)IFHomeObjects, (IMP *)&IFOriginalHomeObjects, '@', 3);
         IFHook(@"IGExploreGridViewController", @"viewDidLoad", (IMP)IFExploreGridLoad, (IMP *)&IFOriginalExploreGridLoad, 'v', 2);
         IFHook(@"IGExploreViewController", @"viewDidLoad", (IMP)IFExploreLoad, (IMP *)&IFOriginalExploreLoad, 'v', 2);
+        IFHook(@"IGStoryViewerDataStore", @"replaceModelItems:", (IMP)IFStoryReplace, (IMP *)&IFOriginalStoryReplace, 'v', 3);
+        IFHook(@"IGStoryViewerDataStore", @"replaceModelItems:maxCount:", (IMP)IFStoryReplaceMax, (IMP *)&IFOriginalStoryReplaceMax, 'v', 4);
     }
 }
