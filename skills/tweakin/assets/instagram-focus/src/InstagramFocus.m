@@ -140,8 +140,7 @@ static id IFTabButton(id self, SEL command, id surface) {
     return IFReelsSurface(surface) ? nil : button;
 }
 
-// Instagram 418.2.0 delivers Home ads as standalone IGAdItem objects (defined in FBSharedFramework).
-// The IGMedia markers cover sponsored media that reaches a list as media, such as Story ad reels.
+// Home ads are standalone IGAdItem objects; the IGMedia markers catch ad media such as Story ad reels.
 static BOOL IFIsAd(id object) {
     if (IFIs(object, @"IGAdItem") || IFIs(object, @"_TtC19IGAdItemModelsSwift14IGAdItem_swift") || IFIs(object, @"IGLeadGenMultiSubmitAdItem")) return YES;
     if (!IFIs(object, @"IGMedia")) return NO;
@@ -229,8 +228,7 @@ static NSArray *IFHomeObjects(id self, SEL command, id adapter) {
     return result;
 }
 
-// The Story viewer's reel list passes through IGStoryViewerDataStore. Filtering its input keeps
-// modelItems, navigation, and the list adapter consistent.
+// Filtering the data store's input keeps the viewer's navigation and list adapter consistent.
 static BOOL IFStoryIsAd(id viewModel) {
     if (!IFIs(viewModel, @"IGStoryViewerViewModel")) return NO;
     BOOL known;
