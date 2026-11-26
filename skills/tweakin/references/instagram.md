@@ -122,4 +122,4 @@ The portable CLI has synthetic tests for binary injection, archive handling, pro
 
 The portable CLI was later accepted end to end on iOS 27.0.1, using the acquisition guide and a paid team's wildcard profile. All hooks installed, and the user confirmed the original behaviors.
 
-The ad and promotion filters (patch version 3) were phone-tested in a local variant with minor preference differences. No ads appeared in Home or Stories, and the counters recorded 8 Home ads and 6 Story ad reels removed. Neither the Threads nor the Vibes unit appeared, so those filters are verified only statically. This exact source compiled and passed signature verification; phone acceptance is pending.
+The ad and promotion filters (patch version 3) were phone-tested on the same device. No ads appeared in Home or Stories, and the counters recorded 8 Home ads and 6 Story ad reels removed. Neither the Threads nor the Vibes unit appeared, so those filters are verified only statically.
