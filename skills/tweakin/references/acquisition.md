@@ -21,6 +21,16 @@ ipatool list-versions --bundle-identifier com.burbn.instagram --platform iphone
 
 The Instagram recipe requires display version `418.2.0`. Store version identifiers are separate numeric identifiers. Inspect candidate identifiers using `ipatool get-version-metadata --help` and verify the returned display version before downloading. Availability depends on the Store and your account. If the pinned version is unavailable, stop the recipe and investigate a newly supported version.
 
+With ipatool 2.8.1, passing `--bundle-identifier` to `list-versions` failed with `failed to resolve the country code: available storefronts request failed`, while the same command with only `--app-id 389801252` succeeded. The listing returned about 830 identifiers in ascending release order. Querying metadata for one identifier at a time and bisecting by display version located 418.2.0 in about ten requests:
+
+```sh
+ipatool list-versions --app-id 389801252 --platform iphone --format json
+ipatool get-version-metadata --app-id 389801252 --platform iphone \
+  --external-version-id CANDIDATE_ID --format json
+```
+
+In that run, identifier `882750070` returned display version `418.2.0` with release date 2026-02-27. Treat it as a starting candidate and confirm the metadata yourself before downloading.
+
 Once you have the correct external version identifier:
 
 ```sh
@@ -37,6 +47,8 @@ Complete passwords and verification codes locally. Do not paste account sessions
 
 For the original app-based setup, sign into the native Mac App Store, install an eligible iPhone or iPad app on the Mac, and open it once. The installed app must provide the supported encrypted images and licenses for that Mac's Store enrollment. The validation app can be different from Instagram. A USB-connected iPhone does not supply this Mac enrollment.
 
+UnfairPlay is a Go program. Install a Go toolchain at least as new as the `go` directive in its `go.mod` (1.26 at the original commit) and build it with `go build -o unfairplay ./cmd/unfairplay` from its checkout.
+
 With a built `unfairplay` tool, the original command shape is:
 
 ```sh
@@ -49,6 +61,8 @@ sudo ./unfairplay setup --app /Applications/YOUR_INSTALLED_APP.app --model-dir "
 ```
 
 Run `setup --help` and `decrypt --help` first. Enter administrator authentication locally and keep any reports private. Inspect the validation result, including plaintext hash verification when available. A successful model recovery, successful decryption, and verified plaintext are distinct outcomes. Redaction removes account metadata; it does not make an app package suitable for publishing.
+
+Setup prints progress to standard error and its JSON result to standard output, so redirect standard output to a private file such as `"$work/unfairplay-setup.json"`. Check `success`, `plaintext_verified`, and `validation_source` there without pasting the file elsewhere. The Mac App Store account that installed the validation app must be the account that downloaded the IPA. In the accepted run, a small unrelated iPhone app validated the model and the Instagram decryption reported `PlaintextVerified` for all 14 encrypted images. The decrypted IPA was smaller than the download because of archive compression and the stripped licenses; its uncompressed contents differed only by the removed licensing files.
 
 The saved model contains private decryption material tied to your Store enrollment. Keep it on machines you control. Never put it in this repository, send it to a friend, or attach it to an issue. Follow [UnfairPlay's own use and licensing instructions](https://github.com/DrWhax/unfairplay#legal-and-ethical-use).
 

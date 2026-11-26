@@ -20,6 +20,10 @@ The inspection command's name clues are Instagram-specific. For another app, use
 
 Search for controller, scroll-view, feed-model, and data-source relationships relevant to the feature. Inspect the corresponding implementations and callers. When static evidence is insufficient, instrument a development-signed local build or use a debugger to observe calls and objects while exercising the feature. Keep observations free of message content, credentials, and account identifiers.
 
+[ipsw](https://github.com/blacktop/ipsw), built on go-macho, can dump Objective-C metadata from a standalone Mach-O. `ipsw class-dump BINARY` writes every class, and `ipsw class-dump BINARY --class '^ClassName$' --re -V` prints one class with typed method signatures, which is the information a hook's function pointer needs. Large apps split their models across embedded frameworks; Instagram 418.2.0 defines `IGMedia` and `IGAdItem` in `FBSharedFramework`, not the main executable. Swift classes appear under their mangled runtime names, such as `_TtC21IGThreadsInFeedModels20IGThreadsInFeedModel`, and `NSClassFromString` accepts that form.
+
+Record class names, not content, in the tweak's diagnostics when filtering a data source. Instagram Home ads looked like flagged media in the static model, but the phone's diagnostics showed they arrived as separate `IGAdItem` objects. The class list identified the missed type in one test.
+
 Do not infer a method's semantics from its name alone. Establish which screens use it, which arguments it receives, what the return value represents, and whether another path restores the original behavior.
 
 ## Choose a narrow hook
